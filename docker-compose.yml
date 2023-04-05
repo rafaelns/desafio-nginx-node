@@ -1,0 +1,52 @@
+version: '3.1'
+
+services:
+  mysqldb:
+    container_name: mysqldb
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: masterkey
+      MYSQL_DATABASE: mydb
+    restart: always
+    networks:
+      - nodeapp_nw
+    volumes:
+      - mysqldb_vl:/var/lib/mysql
+    tty: true
+
+  nodeapp:
+    container_name: nodeapp
+    image: nsrafael/nodeapp
+    environment:
+      - DB_NAME=mysqldb
+      - DB_PORT=3306
+    entrypoint: dockerize -wait tcp://mysqldb:3306 -timeout 20s docker-entrypoint.sh
+    command: node server.js
+    restart: always
+    networks:
+      - nodeapp_nw
+    depends_on:
+      - mysqldb
+    tty: true
+
+  nginx_proxy:
+    container_name: nginx_proxy
+    image: nsrafael/nginx_proxy
+    restart: always
+    networks:
+      - nodeapp_nw
+    ports:
+      - 8080:8080
+    depends_on: 
+      - nodeapp
+    tty: true
+
+networks:
+  nodeapp_nw:
+    name: nodeapp_nw
+
+volumes:
+  mysqldb_vl:
+    name: mysqldb_vl
+
